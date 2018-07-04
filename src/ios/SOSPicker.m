@@ -58,7 +58,7 @@
 
 - (void)elcImagePickerController:(ELCImagePickerController *)picker didFinishPickingMediaWithInfo:(NSArray *)info {
     CDVPluginResult* result = nil;
-    NSMutableArray *resultStrings = [[NSMutableArray alloc] init];
+    NSMutableDictionary *pluginResult = [[NSMutableDictionary alloc] init];
     Byte *buffer = 0;
     NSUInteger buffered = 0;
     NSData* data = nil;
@@ -77,12 +77,22 @@
     ALAsset* asset = nil;
     UIImageOrientation orientation = UIImageOrientationUp;;
     CGSize targetSize = CGSizeMake(self.width, self.height);
+    NSUInteger count = 0;
     for (NSDictionary *dict in info) {
         asset = [dict objectForKey:@"ALAsset"];
         // From ELCImagePickerController.m
         
         @autoreleasepool {
+            NSMutableDictionary *singleResult = [[NSMutableDictionary alloc] init];
+            
             ALAssetRepresentation *assetRep = [asset defaultRepresentation];
+            NSDictionary *metadataDict = [assetRep metadata];
+            NSDictionary *FullGPS = [metadataDict objectForKey:@"{GPS}"];
+            NSDictionary *FullExif = [metadataDict objectForKey:@"{Exif}"];
+            
+            [singleResult setObject:(NSDictionary *)FullGPS forKey:@"GPS"];
+            [singleResult setObject:(NSDictionary *)FullExif forKey:@"Exif"];
+            
             CGImageRef imgRef = NULL;
             
             if(self.useOriginal) {
@@ -133,7 +143,7 @@
                 result = [CDVPluginResult resultWithStatus:CDVCommandStatus_IO_EXCEPTION messageAsString:[err localizedDescription]];
                 break;
             } else {
-
+                
                 if (self.createThumbnail) {
                     
                     imgRef = [asset thumbnail];
@@ -152,15 +162,17 @@
                     [thumbData writeToFile:thumbPath options:NSAtomicWrite error:&err];
                     
                 }
-
-                [resultStrings addObject:[[NSURL fileURLWithPath:filePath] absoluteString]];
+                
+                [singleResult setObject:[[NSURL fileURLWithPath:filePath] absoluteString] forKey:@"file"];
+                
+                [pluginResult setObject:singleResult forKey:[NSString stringWithFormat: @"image%lu", count]];
             }
         }
-        
+        count++;
     }
     
     if (nil == result) {
-        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:resultStrings];
+        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:pluginResult];
     }
     
     [self.viewController dismissViewControllerAnimated:YES completion:nil];
