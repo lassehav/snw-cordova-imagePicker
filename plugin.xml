@@ -55,6 +55,8 @@
 		<resource-file src="src/ios/ELCImagePicker/Resources/Overlay.png" />
 		<resource-file src="src/ios/ELCImagePicker/Resources/Overlay@2x.png" />
 		<resource-file src="src/ios/ELCImagePicker/Resources/l10n" />
+
+		<framework src="MobileCoreServices.framework" />
 	</platform>
 
 	<!-- android -->

@@ -1,18 +1,41 @@
 {
-  "name": "snw-cordova-imagepicker",
-  "version": "1.0.0",
-  "description": "snw-cordova-imagePicker =======================",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "_from": "git+https://github.com/lassehav/snw-cordova-imagePicker.git",
+  "_id": "snw-cordova-imagepicker@1.0.0",
+  "_inBundle": false,
+  "_integrity": "sha1-L3zbuR3RuWnzXTjEt51K2jP7ytA=",
+  "_location": "/snw-cordova-imagepicker",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "git",
+    "raw": "https://github.com/lassehav/snw-cordova-imagePicker.git",
+    "rawSpec": "https://github.com/lassehav/snw-cordova-imagePicker.git",
+    "saveSpec": "git+https://github.com/lassehav/snw-cordova-imagePicker.git",
+    "fetchSpec": "https://github.com/lassehav/snw-cordova-imagePicker.git",
+    "gitCommittish": "master"
   },
+  "_requiredBy": [
+    "#USER",
+    "/"
+  ],
+  "_resolved": "git+https://github.com/lassehav/snw-cordova-imagePicker.git#b3d018fd428b2b489ae558e47a614a095cdf3d43",
+  "_spec": "https://github.com/lassehav/snw-cordova-imagePicker.git",
+  "_where": "/Users/lassehaverinen/dev/iisifoto/IisifotoIonic",
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/lassehav/snw-cordova-imagePicker/issues"
+  },
+  "bundleDependencies": false,
+  "deprecated": false,
+  "description": "snw-cordova-imagePicker =======================",
+  "homepage": "https://github.com/lassehav/snw-cordova-imagePicker#readme",
+  "license": "ISC",
+  "name": "snw-cordova-imagepicker",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lassehav/snw-cordova-imagePicker.git"
   },
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/lassehav/snw-cordova-imagePicker/issues"
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "homepage": "https://github.com/lassehav/snw-cordova-imagePicker#readme"
+  "version": "1.0.0"
 }

@@ -10,6 +10,7 @@
 #import "ELCAlbumPickerController.h"
 #import "ELCImagePickerController.h"
 #import "ELCAssetTablePicker.h"
+#import <MobileCoreServices/MobileCoreServices.h>
 
 #define CDV_PHOTO_PREFIX @"snw_photo_"
 
@@ -56,6 +57,85 @@
 }
 
 
+- (UIImage *)scaleAndRotateImage:(UIImage *)image{
+        // No-op if the orientation is already correct
+        if (image.imageOrientation == UIImageOrientationUp) return image;
+
+        // We need to calculate the proper transformation to make the image upright.
+        // We do it in 2 steps: Rotate if Left/Right/Down, and then flip if Mirrored.
+        CGAffineTransform transform = CGAffineTransformIdentity;
+
+        switch (image.imageOrientation) {
+            case UIImageOrientationDown:
+            case UIImageOrientationDownMirrored:
+                transform = CGAffineTransformTranslate(transform, image.size.width, image.size.height);
+                transform = CGAffineTransformRotate(transform, M_PI);
+                break;
+
+            case UIImageOrientationLeft:
+            case UIImageOrientationLeftMirrored:
+                transform = CGAffineTransformTranslate(transform, image.size.width, 0);
+                transform = CGAffineTransformRotate(transform, M_PI_2);
+                break;
+
+            case UIImageOrientationRight:
+            case UIImageOrientationRightMirrored:
+                transform = CGAffineTransformTranslate(transform, 0, image.size.height);
+                transform = CGAffineTransformRotate(transform, -M_PI_2);
+                break;
+            case UIImageOrientationUp:
+            case UIImageOrientationUpMirrored:
+                break;
+        }
+
+        switch (image.imageOrientation) {
+            case UIImageOrientationUpMirrored:
+            case UIImageOrientationDownMirrored:
+                transform = CGAffineTransformTranslate(transform, image.size.width, 0);
+                transform = CGAffineTransformScale(transform, -1, 1);
+                break;
+
+            case UIImageOrientationLeftMirrored:
+            case UIImageOrientationRightMirrored:
+                transform = CGAffineTransformTranslate(transform, image.size.height, 0);
+                transform = CGAffineTransformScale(transform, -1, 1);
+                break;
+            case UIImageOrientationUp:
+            case UIImageOrientationDown:
+            case UIImageOrientationLeft:
+            case UIImageOrientationRight:
+                break;
+        }
+
+        // Now we draw the underlying CGImage into a new context, applying the transform
+        // calculated above.
+        CGContextRef ctx = CGBitmapContextCreate(NULL, image.size.width, image.size.height,
+                                                 CGImageGetBitsPerComponent(image.CGImage), 0,
+                                                 CGImageGetColorSpace(image.CGImage),
+                                                 CGImageGetBitmapInfo(image.CGImage));
+        CGContextConcatCTM(ctx, transform);
+        switch (image.imageOrientation) {
+            case UIImageOrientationLeft:
+            case UIImageOrientationLeftMirrored:
+            case UIImageOrientationRight:
+            case UIImageOrientationRightMirrored:
+                CGContextDrawImage(ctx, CGRectMake(0,0,image.size.height,image.size.width), image.CGImage);
+                break;
+
+            default:
+                CGContextDrawImage(ctx, CGRectMake(0,0,image.size.width,image.size.height), image.CGImage);
+                break;
+        }
+
+        // And now we just create a new UIImage from the drawing context
+        CGImageRef cgimg = CGBitmapContextCreateImage(ctx);
+        UIImage *img = [UIImage imageWithCGImage:cgimg];
+        CGContextRelease(ctx);
+        CGImageRelease(cgimg);
+        return img;
+}
+
+
 - (void)elcImagePickerController:(ELCImagePickerController *)picker didFinishPickingMediaWithInfo:(NSArray *)info {
     CDVPluginResult* result = nil;
     NSMutableDictionary *pluginResult = [[NSMutableDictionary alloc] init];
@@ -89,9 +169,33 @@
             NSDictionary *metadataDict = [assetRep metadata];
             NSDictionary *FullGPS = [metadataDict objectForKey:@"{GPS}"];
             NSDictionary *FullExif = [metadataDict objectForKey:@"{Exif}"];
+            NSDictionary *Orientation = [metadataDict objectForKey:@"Orientation"];
+
+            if(FullGPS != nil)
+            {
+                [singleResult setObject:(NSDictionary *)FullGPS forKey:@"GPS"];    
+            }
+            else
+            {
+                [singleResult setObject:[NSNull null] forKey:@"GPS"];    
+            }
+            if(FullExif != nil)
+            {
+                [singleResult setObject:(NSDictionary *)FullExif forKey:@"Exif"];
+            }
+            else
+            {
+                [singleResult setObject:[NSNull null] forKey:@"Exif"];
+            }
+            if(Orientation != nil)
+            {
+                [singleResult setObject:(NSDictionary *)Orientation forKey:@"Orientation"];
+            }
+            else
+            {
+                [singleResult setObject:[NSNull null] forKey:@"Orientation"];
+            }
             
-            [singleResult setObject:(NSDictionary *)FullGPS forKey:@"GPS"];
-            [singleResult setObject:(NSDictionary *)FullExif forKey:@"Exif"];
             
             CGImageRef imgRef = NULL;
             
@@ -122,6 +226,8 @@
                 }
                 
                 UIImage* image = [UIImage imageWithCGImage:imgRef scale:1.0f orientation:orientation];
+                image=[self scaleAndRotateImage:image];
+            
                 if (self.width == 0 && self.height == 0) {
                     data = UIImageJPEGRepresentation(image, self.quality/100.0f);
                 } else {
@@ -130,9 +236,36 @@
                 }
                 
                 fileExtension = @"jpg";
-                
+
+                // create the image ref
+                CGDataProviderRef imgDataProvider = CGDataProviderCreateWithCFData((__bridge CFDataRef) data);
+                CGImageRef imageRef = CGImageCreateWithJPEGDataProvider(imgDataProvider, NULL, true, kCGRenderingIntentDefault);
+
+
+                // the exif NSDictionary converted to mutable
+                NSMutableDictionary *mutableDictionary = [NSMutableDictionary dictionaryWithDictionary:metadataDict];
+                [mutableDictionary setObject:[NSNull null] forKey:@"Orientation"];
+
+                // create the new output data
+                CFMutableDataRef newImageData = CFDataCreateMutable(NULL, 0);
+                //  JPEG assumed since image is from camera
+                CFStringRef type = UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, (__bridge CFStringRef) @"image/jpg", kUTTypeImage);
+                // create the destination
+                CGImageDestinationRef destination = CGImageDestinationCreateWithData(newImageData, type, 1, NULL);
+                // add the image to the destination
+                CGImageDestinationAddImage(destination, imageRef, (__bridge CFDictionaryRef) mutableDictionary);
+                // finalize the write
+                CGImageDestinationFinalize(destination);
+
+                CGDataProviderRelease(imgDataProvider);
+                CGImageRelease(imageRef);
+                CFRelease(type);
+                CFRelease(destination);
+
+                data = (__bridge_transfer NSData *)newImageData;
+
             }
-            
+
             do {
                 filePath = [NSString stringWithFormat:@"%@/%@%04d.%@", docsPath, CDV_PHOTO_PREFIX, fileName, fileExtension];
                 thumbPath = [NSString stringWithFormat:@"%@/thumb_%@%04d.%@", docsPath, CDV_PHOTO_PREFIX, fileName, fileExtension];

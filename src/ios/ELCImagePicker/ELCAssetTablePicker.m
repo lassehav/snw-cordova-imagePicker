@@ -222,7 +222,9 @@
 
 - (void)doneAction:(id)sender
 {
-    [self.activityIndicator startAnimating];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.activityIndicator startAnimating];
+    });
     [self performSelectorInBackground:@selector(prepareAssets) withObject:nil];
 }
 
@@ -235,7 +237,9 @@
         }
     }
     [self performSelectorOnMainThread:@selector(returnAssets:) withObject:selectedAssetsImages waitUntilDone:YES];
-    [self.activityIndicator removeFromSuperview];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.activityIndicator removeFromSuperview];
+    });
 }
 
 - (void) returnAssets:(NSMutableArray *)selectedAssetsImages {
